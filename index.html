@@ -1,0 +1,515 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>Binary Calculator</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --bg: #0f1117;
+    --bg-secondary: #181b24;
+    --bg-card: #1e2130;
+    --bg-info: #0d2440;
+    --bg-danger: #2a1010;
+    --bg-warning: #2a1e08;
+    --bg-success: #0d2218;
+    --text: #e8eaf0;
+    --text-sec: #8b92a8;
+    --text-ter: #555d75;
+    --text-info: #60aaee;
+    --text-danger: #e06060;
+    --text-warning: #d49a30;
+    --text-success: #50c880;
+    --border: rgba(255,255,255,0.08);
+    --border-sec: rgba(255,255,255,0.14);
+    --border-info: rgba(60,140,220,0.35);
+    --border-danger: rgba(200,70,70,0.35);
+    --border-warning: rgba(200,140,40,0.35);
+    --radius-sm: 6px;
+    --radius: 9px;
+    --radius-lg: 13px;
+    --font-mono: 'JetBrains Mono', 'Fira Code', 'Cascadia Code', 'Consolas', monospace;
+    --font-ui: 'Inter', 'Segoe UI', system-ui, sans-serif;
+  }
+
+  html, body {
+    min-height: 100vh;
+    background: var(--bg);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 14px;
+    line-height: 1.5;
+  }
+
+  body {
+    display: flex;
+    justify-content: center;
+    padding: 2rem 1rem 4rem;
+  }
+
+  .app {
+    width: 100%;
+    max-width: 780px;
+  }
+
+  /* ---- header ---- */
+  .header {
+    display: flex;
+    align-items: baseline;
+    gap: 12px;
+    margin-bottom: 2rem;
+    padding-bottom: 1rem;
+    border-bottom: 0.5px solid var(--border);
+  }
+  .header h1 {
+    font-size: 18px;
+    font-weight: 600;
+    letter-spacing: -0.02em;
+    color: var(--text);
+    font-family: var(--font-ui);
+  }
+  .header .sub {
+    font-size: 12px;
+    color: var(--text-ter);
+    font-family: var(--font-mono);
+  }
+
+  /* ---- section label ---- */
+  .section-label {
+    font-size: 10px;
+    color: var(--text-ter);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-family: var(--font-ui);
+  }
+
+  /* ---- inputs ---- */
+  input[type=number], input[type=text] {
+    background: var(--bg-card);
+    border: 0.5px solid var(--border-sec);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: var(--font-mono);
+    font-size: 15px;
+    padding: 7px 11px;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  input[type=number]:focus, input[type=text]:focus {
+    border-color: var(--text-info);
+    box-shadow: 0 0 0 2px rgba(60,140,220,0.15);
+  }
+  input[type=number] { width: 130px; }
+
+  /* ---- buttons ---- */
+  button {
+    cursor: pointer;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border-sec);
+    background: transparent;
+    color: var(--text-sec);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    padding: 5px 12px;
+    transition: background 0.12s, color 0.12s, border-color 0.12s;
+  }
+  button:hover { border-color: var(--border-sec); background: var(--bg-card); color: var(--text); }
+
+  .base-btn.active  { background: var(--bg-info);    color: var(--text-info);    border-color: var(--border-info); }
+  .type-tab.active  { background: var(--bg-card);    color: var(--text);         border-color: var(--border-sec);  font-weight: 600; }
+  .op-btn.active    { background: var(--bg-warning); color: var(--text-warning); border-color: var(--border-warning); }
+
+  /* ---- input row ---- */
+  .input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 6px; flex-wrap: wrap; }
+  .base-grp  { display: flex; gap: 4px; }
+
+  .error { font-size: 11px; color: var(--text-danger); min-height: 18px; margin-bottom: 1rem; }
+
+  /* ---- type tabs ---- */
+  .type-tabs { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 1.5rem; }
+  .type-tab  { font-size: 11px; padding: 5px 13px; }
+
+  /* ---- bit display ---- */
+  .bit-display { margin-bottom: 1.5rem; }
+
+  .bit-row {
+    display: flex;
+    gap: 3px;
+    align-items: center;
+    flex-wrap: nowrap;
+    margin-bottom: 4px;
+  }
+  .bit-group { display: flex; gap: 3px; }
+  .bit-group + .bit-group { margin-left: 10px; position: relative; }
+  .bit-group + .bit-group::before {
+    content: '';
+    position: absolute;
+    left: -6px;
+    top: 0;
+    bottom: 0;
+    width: 0.5px;
+    background: var(--border-sec);
+  }
+
+  .bit-cell {
+    width: 30px;
+    height: 34px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 14px;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    border: 0.5px solid var(--border);
+    cursor: pointer;
+    user-select: none;
+    color: var(--text-sec);
+    background: var(--bg-card);
+    transition: background 0.1s, color 0.1s, border-color 0.1s, transform 0.07s;
+  }
+  .bit-cell:hover   { border-color: var(--border-sec); transform: translateY(-1px); }
+  .bit-cell:active  { transform: translateY(0); }
+  .bit-cell.one     { background: var(--bg-info);   color: var(--text-info);   border-color: var(--border-info); }
+  .bit-cell.sign    { background: var(--bg-danger); color: var(--text-danger); border-color: var(--border-danger); }
+  .bit-cell.sign.one{ background: var(--bg-danger); color: var(--text-danger); }
+
+  .bit-idx { display: flex; gap: 3px; }
+  .bit-idx-group { display: flex; gap: 3px; }
+  .bit-idx-group + .bit-idx-group { margin-left: 10px; }
+  .bit-idx-group span { width: 30px; text-align: center; font-size: 9px; color: var(--text-ter); }
+
+  /* ---- info grid ---- */
+  .info-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 8px;
+    margin-bottom: 1.75rem;
+  }
+  .info-card {
+    background: var(--bg-card);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 10px 14px;
+  }
+  .info-card .label { font-size: 10px; color: var(--text-ter); text-transform: uppercase; letter-spacing: 0.07em; margin-bottom: 4px; font-family: var(--font-ui); }
+  .info-card .value { font-size: 15px; font-weight: 500; color: var(--text); word-break: break-all; }
+  .info-card .sub   { font-size: 10px; color: var(--text-ter); margin-top: 3px; }
+  .info-card .sub.warn { color: var(--text-warning); }
+
+  /* ---- bitwise section ---- */
+  .bitwise-section {
+    border-top: 0.5px solid var(--border);
+    padding-top: 1.25rem;
+  }
+  .op-row { display: flex; gap: 5px; flex-wrap: wrap; margin-bottom: 1rem; align-items: center; }
+  .op-btn { font-size: 11px; padding: 5px 12px; }
+
+  .b-input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; }
+  .b-input-row label { font-size: 12px; color: var(--text-sec); }
+  .b-bin-preview { font-size: 11px; color: var(--text-ter); }
+
+  .op-display {
+    background: var(--bg-card);
+    border: 0.5px solid var(--border);
+    border-radius: var(--radius);
+    padding: 14px 16px;
+    font-family: var(--font-mono);
+    font-size: 13px;
+    line-height: 2;
+  }
+  .op-line { display: flex; justify-content: space-between; align-items: center; gap: 8px; }
+  .op-line .lbl  { color: var(--text-ter); font-size: 11px; min-width: 52px; }
+  .op-line .bits { color: var(--text); letter-spacing: 0.06em; flex: 1; }
+  .op-line .val  { font-size: 11px; color: var(--text-sec); min-width: 40px; text-align: right; }
+  .op-line.result .bits { color: var(--text-success); font-weight: 600; }
+  .op-line.result .val  { color: var(--text-success); }
+  .op-sep { border: none; border-top: 0.5px solid var(--border-sec); margin: 4px 0; }
+  .op-meta { margin-top: 6px; font-size: 10px; color: var(--text-ter); }
+
+  /* ---- legend ---- */
+  .legend {
+    display: flex;
+    gap: 14px;
+    margin-bottom: 10px;
+    flex-wrap: wrap;
+  }
+  .legend-item { display: flex; align-items: center; gap: 5px; font-size: 10px; color: var(--text-ter); }
+  .legend-dot  { width: 10px; height: 10px; border-radius: 3px; }
+  .legend-dot.zero { background: var(--bg-card); border: 0.5px solid var(--border-sec); }
+  .legend-dot.one  { background: var(--bg-info);   border: 0.5px solid var(--border-info); }
+  .legend-dot.sign { background: var(--bg-danger); border: 0.5px solid var(--border-danger); }
+
+  @media (max-width: 540px) {
+    .bit-cell { width: 24px; height: 28px; font-size: 13px; }
+    .bit-idx-group span { width: 24px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="header">
+    <h1>Binary Calculator</h1>
+    <span class="sub">bitwise · char · signed char · uint16 · int16</span>
+  </div>
+
+  <div class="section-label">input</div>
+  <div class="input-row">
+    <input type="number" id="numInput" value="24" />
+    <div class="base-grp">
+      <button class="base-btn active" onclick="setBase(10,this)">DEC</button>
+      <button class="base-btn"        onclick="setBase(16,this)">HEX</button>
+      <button class="base-btn"        onclick="setBase(2,this)">BIN</button>
+    </div>
+  </div>
+  <div class="error" id="err"></div>
+
+  <div class="type-tabs">
+    <button class="type-tab active" onclick="setType('unsigned',this)">unsigned char (8-bit)</button>
+    <button class="type-tab"        onclick="setType('signed',this)">signed char (8-bit)</button>
+    <button class="type-tab"        onclick="setType('uint16',this)">uint16_t (16-bit)</button>
+    <button class="type-tab"        onclick="setType('int16',this)">int16_t (16-bit)</button>
+  </div>
+
+  <div class="section-label">bit pattern &nbsp;<span style="font-size:10px;color:var(--text-ter);text-transform:none;letter-spacing:0;">(click to toggle)</span></div>
+  <div class="legend">
+    <div class="legend-item"><div class="legend-dot zero"></div>0</div>
+    <div class="legend-item"><div class="legend-dot one"></div>1</div>
+    <div class="legend-item"><div class="legend-dot sign"></div>sign bit</div>
+  </div>
+  <div class="bit-display">
+    <div class="bit-row" id="bitRow"></div>
+    <div class="bit-idx" id="bitIdx"></div>
+  </div>
+
+  <div class="info-grid" id="infoGrid"></div>
+
+  <div class="bitwise-section">
+    <div class="section-label">bitwise operations</div>
+    <div class="op-row">
+      <button class="op-btn active" onclick="setOp('AND',this)">AND</button>
+      <button class="op-btn"        onclick="setOp('OR',this)">OR</button>
+      <button class="op-btn"        onclick="setOp('XOR',this)">XOR</button>
+      <button class="op-btn"        onclick="setOp('NOT',this)">NOT</button>
+      <button class="op-btn"        onclick="setOp('SHL',this)">SHL &lt;&lt;</button>
+      <button class="op-btn"        onclick="setOp('SHR',this)">SHR &gt;&gt;</button>
+    </div>
+    <div class="b-input-row" id="bRow">
+      <label>B:</label>
+      <input type="number" id="bInput" value="15" style="width:100px;" oninput="update()" />
+      <span class="b-bin-preview" id="bBinPreview"></span>
+    </div>
+    <div class="op-display" id="opDisplay"></div>
+  </div>
+</div>
+
+<script>
+  let currentType = 'unsigned';
+  let currentBase = 10;
+  let currentOp   = 'AND';
+  let bits   = 8;
+  let signed = false;
+
+  function setType(t, el) {
+    document.querySelectorAll('.type-tab').forEach(b => b.classList.remove('active'));
+    el.classList.add('active');
+    currentType = t;
+    bits   = (t === 'uint16' || t === 'int16') ? 16 : 8;
+    signed = (t === 'signed' || t === 'int16');
+    update();
+  }
+
+  function setBase(b, el) {
+    document.querySelectorAll('.base-btn').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    const v = getValue();
+    const mask = bits === 16 ? 0xFFFF : 0xFF;
+    const u = v < 0 ? (v + (1 << bits)) & mask : v & mask;
+    const inp = document.getElementById('numInput');
+    currentBase = b;
+    if (b === 16) { inp.type = 'text'; inp.value = u.toString(16).toUpperCase(); }
+    else if (b === 2) { inp.type = 'text'; inp.value = u.toString(2); }
+    else { inp.type = 'number'; inp.value = v; }
+  }
+
+  function getValue() {
+    const raw = document.getElementById('numInput').value.trim();
+    if (currentBase === 16) return parseInt(raw, 16) || 0;
+    if (currentBase === 2)  return parseInt(raw, 2)  || 0;
+    return parseInt(raw, 10) || 0;
+  }
+
+  function clampToType(v) {
+    const mask = bits === 16 ? 0xFFFF : 0xFF;
+    v = v & mask;
+    if (signed) { const sb = 1 << (bits - 1); if (v & sb) v = v - (1 << bits); }
+    return v;
+  }
+
+  function toBitArr(v, n) {
+    const mask = n === 16 ? 0xFFFF : 0xFF;
+    const u = v < 0 ? (v + (1 << n)) & mask : v & mask;
+    const arr = [];
+    for (let i = n - 1; i >= 0; i--) arr.push((u >> i) & 1);
+    return arr;
+  }
+
+  function buildBitRow(v) {
+    const bitRow = document.getElementById('bitRow');
+    const bitIdx = document.getElementById('bitIdx');
+    const arr = toBitArr(v, bits);
+    bitRow.innerHTML = '';
+    bitIdx.innerHTML = '';
+
+    const groups = bits === 8 ? [[0, 8]] : [[0, 8], [8, 16]];
+    groups.forEach(([start, end]) => {
+      const grp = document.createElement('div');
+      grp.className = 'bit-group';
+      for (let i = start; i < end; i++) {
+        const cell = document.createElement('div');
+        const isSign = i === 0 && signed;
+        cell.className = 'bit-cell' + (arr[i] ? ' one' : '') + (isSign ? ' sign' : '');
+        cell.textContent = arr[i];
+        cell.title = `bit ${bits - 1 - i}`;
+        const pos = bits - 1 - i;
+        cell.onclick = () => toggleBit(pos);
+        grp.appendChild(cell);
+      }
+      bitRow.appendChild(grp);
+
+      const ig = document.createElement('div');
+      ig.className = 'bit-idx-group';
+      for (let i = start; i < end; i++) {
+        const s = document.createElement('span');
+        s.textContent = bits - 1 - i;
+        ig.appendChild(s);
+      }
+      bitIdx.appendChild(ig);
+    });
+  }
+
+  function toggleBit(pos) {
+    const v = getValue();
+    const mask = bits === 16 ? 0xFFFF : 0xFF;
+    let u = v < 0 ? (v + (1 << bits)) & mask : v & mask;
+    u ^= (1 << pos);
+    let nv = u;
+    if (signed) { const sb = 1 << (bits - 1); if (u & sb) nv = u - (1 << bits); }
+    const inp = document.getElementById('numInput');
+    if (currentBase === 16)     inp.value = (nv < 0 ? (nv + (1 << bits)) & mask : nv).toString(16).toUpperCase();
+    else if (currentBase === 2) inp.value = (nv < 0 ? (nv + (1 << bits)) & mask : nv).toString(2);
+    else                        inp.value = nv;
+    update();
+  }
+
+  function buildInfo(v) {
+    const mask = bits === 16 ? 0xFFFF : 0xFF;
+    const u  = v < 0 ? (v + (1 << bits)) & mask : v & mask;
+    const hex      = u.toString(16).toUpperCase().padStart(bits / 4, '0');
+    const oct      = u.toString(8);
+    const popcount = u.toString(2).split('').filter(x => x === '1').length;
+    const msb      = (u >> (bits - 1)) & 1;
+    const lsb      = u & 1;
+    const minV  = signed ? -(1 << (bits - 1)) : 0;
+    const maxV  = signed ? (1 << (bits - 1)) - 1 : mask;
+    const overflow = v < minV || v > maxV;
+    const rangeStr = bits === 8 ? (signed ? '−128 to 127' : '0 to 255') : (signed ? '−32768 to 32767' : '0 to 65535');
+    const ctype = { unsigned:'unsigned char', signed:'signed char', uint16:'uint16_t', int16:'int16_t' }[currentType];
+
+    const cards = [
+      { label:'decimal',   value: v,              sub: '' },
+      { label:'hex',       value: '0x' + hex,     sub: '' },
+      { label:'octal',     value: '0' + oct,       sub: '' },
+      { label:'popcount',  value: popcount + ' bit' + (popcount !== 1 ? 's' : ''), sub: 'set' },
+      { label:'MSB',       value: msb,             sub: 'bit ' + (bits - 1) },
+      { label:'LSB',       value: lsb,             sub: 'bit 0' },
+      { label:'range',     value: rangeStr,        sub: overflow ? '⚠ overflow' : 'in range', subWarn: overflow },
+      { label:'C type',    value: ctype,           sub: `(${ctype})${v}` },
+    ];
+
+    document.getElementById('infoGrid').innerHTML = cards.map(c =>
+      `<div class="info-card">
+        <div class="label">${c.label}</div>
+        <div class="value">${c.value}</div>
+        <div class="sub${c.subWarn ? ' warn' : ''}">${c.sub}</div>
+      </div>`
+    ).join('');
+  }
+
+  function buildOp(v) {
+    const mask = bits === 16 ? 0xFFFF : 0xFF;
+    const bRaw = parseInt(document.getElementById('bInput').value) || 0;
+    const bV   = clampToType(bRaw);
+    const aU   = v  < 0 ? (v  + (1 << bits)) & mask : v  & mask;
+    const bU   = bV < 0 ? (bV + (1 << bits)) & mask : bV & mask;
+
+    document.getElementById('bBinPreview').textContent = bU.toString(2).padStart(bits, '0');
+
+    let resU, opSymbol, showB = true;
+    if (currentOp === 'NOT') {
+      resU = (~aU) & mask; opSymbol = '~A'; showB = false;
+    } else if (currentOp === 'AND') {
+      resU = aU & bU; opSymbol = 'A &amp; B';
+    } else if (currentOp === 'OR') {
+      resU = aU | bU; opSymbol = 'A | B';
+    } else if (currentOp === 'XOR') {
+      resU = aU ^ bU; opSymbol = 'A ^ B';
+    } else if (currentOp === 'SHL') {
+      const amt = Math.abs(bRaw) % bits;
+      resU = (aU << amt) & mask; opSymbol = `A &lt;&lt; ${amt}`; showB = false;
+    } else {
+      const amt = Math.abs(bRaw) % bits;
+      resU = (signed ? (aU >> amt) : (aU >>> amt)) & mask; opSymbol = `A &gt;&gt; ${amt}`; showB = false;
+    }
+
+    let resV = resU;
+    if (signed) { const sb = 1 << (bits - 1); if (resU & sb) resV = resU - (1 << bits); }
+
+    const aBits = aU.toString(2).padStart(bits, '0');
+    const bBits = bU.toString(2).padStart(bits, '0');
+    const rBits = resU.toString(2).padStart(bits, '0');
+    const resHex = '0x' + resU.toString(16).toUpperCase().padStart(bits / 4, '0');
+
+    let html = `<div class="op-line"><span class="lbl">A</span><span class="bits">${aBits}</span><span class="val">${v}</span></div>`;
+    if (showB) html += `<div class="op-line"><span class="lbl">B</span><span class="bits">${bBits}</span><span class="val">${bV}</span></div>`;
+    html += `<hr class="op-sep">`;
+    html += `<div class="op-line result"><span class="lbl">${opSymbol}</span><span class="bits">${rBits}</span><span class="val">${resV}</span></div>`;
+    html += `<div class="op-meta">hex: ${resHex}</div>`;
+
+    document.getElementById('opDisplay').innerHTML = html;
+  }
+
+  function update() {
+    const raw = getValue();
+    const v   = clampToType(raw);
+    const mask = bits === 16 ? 0xFFFF : 0xFF;
+    const minV = signed ? -(1 << (bits - 1)) : 0;
+    const maxV = signed ? (1 << (bits - 1)) - 1 : mask;
+    const err  = document.getElementById('err');
+
+    if (isNaN(raw)) { err.textContent = 'invalid input'; return; }
+    err.textContent = (raw < minV || raw > maxV)
+      ? `overflow: ${raw} → stored as ${v} (wraps mod ${1 << bits})`
+      : '';
+
+    buildBitRow(v);
+    buildInfo(v);
+    buildOp(v);
+  }
+
+  document.getElementById('numInput').addEventListener('input', update);
+  setOp('AND', document.querySelector('.op-btn.active'));
+  update();
+
+  function setOp(op, el) {
+    document.querySelectorAll('.op-btn').forEach(b => b.classList.remove('active'));
+    if (el) el.classList.add('active');
+    currentOp = op;
+    document.getElementById('bRow').style.display = (op === 'NOT') ? 'none' : 'flex';
+    update();
+  }
+</script>
+</body>
+</html>
