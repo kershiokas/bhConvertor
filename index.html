@@ -257,7 +257,7 @@
 
   <div class="section-label">input</div>
   <div class="input-row">
-    <input type="number" id="numInput" value="24" />
+    <input type="text" id="numInput" value="24" inputmode="numeric" />
     <div class="base-grp">
       <button class="base-btn active" onclick="setBase(10,this)">DEC</button>
       <button class="base-btn"        onclick="setBase(16,this)">HEX</button>
@@ -329,16 +329,18 @@
     const u = v < 0 ? (v + (1 << bits)) & mask : v & mask;
     const inp = document.getElementById('numInput');
     currentBase = b;
-    if (b === 16) { inp.type = 'text'; inp.value = u.toString(16).toUpperCase(); }
-    else if (b === 2) { inp.type = 'text'; inp.value = u.toString(2); }
-    else { inp.type = 'number'; inp.value = v; }
+    if (b === 16)     inp.value = u.toString(16).toUpperCase();
+    else if (b === 2) inp.value = u.toString(2);
+    else              inp.value = String(v);
+    inp.focus();
   }
 
   function getValue() {
     const raw = document.getElementById('numInput').value.trim();
-    if (currentBase === 16) return parseInt(raw, 16) || 0;
-    if (currentBase === 2)  return parseInt(raw, 2)  || 0;
-    return parseInt(raw, 10) || 0;
+    if (!raw) return 0;
+    if (currentBase === 16) { const n = parseInt(raw, 16); return isNaN(n) ? 0 : n; }
+    if (currentBase === 2)  { const n = parseInt(raw, 2);  return isNaN(n) ? 0 : n; }
+    const n = parseInt(raw, 10); return isNaN(n) ? 0 : n;
   }
 
   function clampToType(v) {
