@@ -242,6 +242,43 @@
   .legend-dot.one  { background: var(--bg-info);   border: 0.5px solid var(--border-info); }
   .legend-dot.sign { background: var(--bg-danger); border: 0.5px solid var(--border-danger); }
 
+  .utf8-section {
+    border-top: 0.5px solid var(--border);
+    padding-top: 1.25rem;
+    margin-top: 1.5rem;
+  }
+  .utf8-input-row { display: flex; gap: 8px; align-items: center; margin-bottom: 12px; flex-wrap: wrap; }
+  .utf8-char-input {
+    width: 64px;
+    text-align: center;
+    font-size: 22px;
+    padding: 6px 8px;
+    background: var(--bg-card);
+    border: 0.5px solid var(--border-sec);
+    border-radius: var(--radius-sm);
+    color: var(--text);
+    font-family: sans-serif;
+    outline: none;
+    transition: border-color 0.15s;
+  }
+  .utf8-char-input:focus { border-color: var(--text-info); box-shadow: 0 0 0 2px rgba(60,140,220,0.15); }
+  .utf8-send-btn {
+    font-size: 11px; padding: 5px 14px;
+    background: var(--bg-info); color: var(--text-info);
+    border-color: var(--border-info);
+  }
+  .utf8-send-btn:hover { background: var(--bg-info); filter: brightness(1.2); }
+  .utf8-table { width: 100%; border-collapse: collapse; font-family: var(--font-mono); font-size: 12px; }
+  .utf8-table th { text-align: left; font-size: 10px; text-transform: uppercase; letter-spacing: 0.07em; color: var(--text-ter); font-family: var(--font-ui); padding: 0 8px 6px 0; font-weight: 400; }
+  .utf8-table td { padding: 5px 8px 5px 0; border-top: 0.5px solid var(--border); color: var(--text); vertical-align: middle; }
+  .utf8-table td.muted { color: var(--text-sec); }
+  .utf8-table td.mono  { font-family: var(--font-mono); }
+  .utf8-table td .byte-badge {
+    display: inline-block; background: var(--bg-info); color: var(--text-info);
+    border-radius: 4px; padding: 1px 6px; font-size: 11px; margin-right: 3px;
+  }
+  .utf8-empty { font-size: 12px; color: var(--text-ter); padding: 8px 0; }
+
   @media (max-width: 540px) {
     .bit-cell { width: 24px; height: 28px; font-size: 13px; }
     .bit-idx-group span { width: 24px; }
@@ -307,6 +344,16 @@
       <span class="b-bin-preview" id="bBinPreview"></span>
     </div>
     <div class="op-display" id="opDisplay"></div>
+  </div>
+
+  <div class="utf8-section">
+    <div class="section-label">utf-8 character → decimal</div>
+    <div class="utf8-input-row">
+      <input class="utf8-char-input" type="text" id="utf8Input" maxlength="2" placeholder="A" oninput="onUtf8Input(this)" />
+      <button class="utf8-send-btn" onclick="sendUtf8ToA()">→ load into A</button>
+      <span style="font-size:11px;color:var(--text-ter);" id="utf8Hint"></span>
+    </div>
+    <div id="utf8Result"></div>
   </div>
 </div>
 
@@ -546,6 +593,69 @@
     document.getElementById('bRow').style.display = (op === 'NOT') ? 'none' : 'flex';
     update();
   }
+
+  function onUtf8Input(inp) {
+    const val = inp.value;
+    if (val.length > 1) inp.value = val.slice(-1);
+    renderUtf8();
+  }
+
+  function renderUtf8() {
+    const ch = document.getElementById('utf8Input').value;
+    const hint = document.getElementById('utf8Hint');
+    const result = document.getElementById('utf8Result');
+    if (!ch) { result.innerHTML = '<div class="utf8-empty">type a character above</div>'; hint.textContent = ''; return; }
+
+    const cp = ch.codePointAt(0);
+    const encoder = new TextEncoder();
+    const bytes = encoder.encode(ch);
+    const byteCount = bytes.length;
+
+    const binStr = cp.toString(2).padStart(byteCount === 1 ? 8 : byteCount === 2 ? 11 : byteCount === 3 ? 16 : 21, '0');
+    const hexBytes = Array.from(bytes).map(b => b.toString(16).toUpperCase().padStart(2,'0'));
+
+    let encoding = '';
+    if (byteCount === 1) encoding = binStr.padStart(8,'0');
+    else if (byteCount === 2) {
+      encoding = '110' + binStr.slice(0,5) + ' 10' + binStr.slice(5);
+    } else if (byteCount === 3) {
+      encoding = '1110' + binStr.slice(0,4) + ' 10' + binStr.slice(4,10) + ' 10' + binStr.slice(10);
+    } else {
+      encoding = '11110' + binStr.slice(0,3) + ' 10' + binStr.slice(3,9) + ' 10' + binStr.slice(9,15) + ' 10' + binStr.slice(15);
+    }
+
+    hint.textContent = byteCount + ' byte' + (byteCount > 1 ? 's' : '') + ' · U+' + cp.toString(16).toUpperCase().padStart(4,'0');
+
+    const rows = [
+      ['character', `<span style="font-size:18px;font-family:sans-serif;">${ch}</span>`],
+      ['code point', `U+${cp.toString(16).toUpperCase().padStart(4,'0')}`],
+      ['decimal', `${cp}`],
+      ['hex', `0x${cp.toString(16).toUpperCase()}`],
+      ['binary', `${cp.toString(2).padStart(8,'0')}`],
+      ['utf-8 bytes', hexBytes.map(b => `<span class="byte-badge">${b}</span>`).join('')],
+      ['utf-8 binary', `<span style="letter-spacing:0.05em;font-size:11px;">${encoding}</span>`],
+      ['byte count', byteCount],
+    ];
+
+    result.innerHTML = `<table class="utf8-table">
+      <thead><tr><th>field</th><th>value</th></tr></thead>
+      <tbody>${rows.map(([k,v]) => `<tr><td class="muted">${k}</td><td class="mono">${v}</td></tr>`).join('')}</tbody>
+    </table>`;
+  }
+
+  function sendUtf8ToA() {
+    const ch = document.getElementById('utf8Input').value;
+    if (!ch) return;
+    const cp = ch.codePointAt(0);
+    const inp = document.getElementById('numInput');
+    if (currentBase === 16)     inp.value = cp.toString(16).toUpperCase();
+    else if (currentBase === 2) inp.value = cp.toString(2);
+    else                        inp.value = String(cp);
+    update();
+  }
+
+  renderUtf8();
+
 </script>
 </body>
 </html>
