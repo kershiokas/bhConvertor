@@ -259,9 +259,9 @@
   <div class="input-row">
     <input type="text" id="numInput" value="24" inputmode="numeric" />
     <div class="base-grp">
-      <button class="base-btn active" onclick="setBase(10,this)">DEC</button>
-      <button class="base-btn"        onclick="setBase(16,this)">HEX</button>
-      <button class="base-btn"        onclick="setBase(2,this)">BIN</button>
+      <button class="base-btn a-base-btn active" onclick="setBase(10,this)">DEC</button>
+      <button class="base-btn a-base-btn"        onclick="setBase(16,this)">HEX</button>
+      <button class="base-btn a-base-btn"        onclick="setBase(2,this)">BIN</button>
     </div>
   </div>
   <div class="error" id="err"></div>
@@ -298,7 +298,12 @@
     </div>
     <div class="b-input-row" id="bRow">
       <label>B:</label>
-      <input type="number" id="bInput" value="15" style="width:100px;" oninput="update()" />
+      <input type="text" id="bInput" value="15" style="width:100px;" oninput="update()" />
+      <div class="base-grp">
+        <button class="base-btn b-base-btn active" onclick="setBBase(10,this)">DEC</button>
+        <button class="base-btn b-base-btn"        onclick="setBBase(16,this)">HEX</button>
+        <button class="base-btn b-base-btn"        onclick="setBBase(2,this)">BIN</button>
+      </div>
       <span class="b-bin-preview" id="bBinPreview"></span>
     </div>
     <div class="op-display" id="opDisplay"></div>
@@ -309,6 +314,29 @@
   let currentType = 'unsigned';
   let currentBase = 10;
   let currentOp   = 'AND';
+  let currentBBase = 10;
+
+  function getBValue() {
+    const raw = document.getElementById('bInput').value.trim();
+    if (!raw) return 0;
+    if (currentBBase === 16) { const n = parseInt(raw, 16); return isNaN(n) ? 0 : n; }
+    if (currentBBase === 2)  { const n = parseInt(raw, 2);  return isNaN(n) ? 0 : n; }
+    const n = parseInt(raw, 10); return isNaN(n) ? 0 : n;
+  }
+
+  function setBBase(b, el) {
+    document.querySelectorAll('.b-base-btn').forEach(x => x.classList.remove('active'));
+    el.classList.add('active');
+    const prev = getBValue();
+    const mask = bits === 16 ? 0xFFFF : 0xFF;
+    const u = prev < 0 ? (prev + (1 << bits)) & mask : prev & mask;
+    currentBBase = b;
+    const inp = document.getElementById('bInput');
+    if (b === 16)     inp.value = u.toString(16).toUpperCase();
+    else if (b === 2) inp.value = u.toString(2);
+    else              inp.value = String(clampToType(prev));
+    update();
+  }
   let bits   = 8;
   let signed = false;
 
@@ -322,7 +350,7 @@
   }
 
   function setBase(b, el) {
-    document.querySelectorAll('.base-btn').forEach(x => x.classList.remove('active'));
+    document.querySelectorAll('.a-base-btn').forEach(x => x.classList.remove('active'));
     el.classList.add('active');
     const v = getValue();
     const mask = bits === 16 ? 0xFFFF : 0xFF;
@@ -442,7 +470,7 @@
 
   function buildOp(v) {
     const mask = bits === 16 ? 0xFFFF : 0xFF;
-    const bRaw = parseInt(document.getElementById('bInput').value) || 0;
+    const bRaw = getBValue();
     const bV   = clampToType(bRaw);
     const aU   = v  < 0 ? (v  + (1 << bits)) & mask : v  & mask;
     const bU   = bV < 0 ? (bV + (1 << bits)) & mask : bV & mask;
@@ -459,11 +487,17 @@
     } else if (currentOp === 'XOR') {
       resU = aU ^ bU; opSymbol = 'A ^ B';
     } else if (currentOp === 'SHL') {
-      const amt = Math.abs(bRaw) % bits;
-      resU = (aU << amt) & mask; opSymbol = `A &lt;&lt; ${amt}`; showB = false;
+      const amt = Math.abs(bRaw);
+      resU = amt >= bits ? 0 : (aU << amt) & mask;
+      opSymbol = `A &lt;&lt; ${amt}`; showB = false;
     } else {
-      const amt = Math.abs(bRaw) % bits;
-      resU = (signed ? (aU >> amt) : (aU >>> amt)) & mask; opSymbol = `A &gt;&gt; ${amt}`; showB = false;
+      const amt = Math.abs(bRaw);
+      if (amt >= bits) {
+        resU = (signed && (aU >> (bits - 1))) ? mask : 0;
+      } else {
+        resU = signed ? ((aU >> amt) & mask) : ((aU >>> amt) & mask);
+      }
+      opSymbol = `A &gt;&gt; ${amt}`; showB = false;
     }
 
     let resV = resU;
